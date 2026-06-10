@@ -23,34 +23,31 @@ const TTS_SOURCES = [
   (text: string) => `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`,
 ];
 
-// 使用 TTS 兜底（多个源自动切换）
+// 使用 TTS 兜底（并行请求，用最快的）
 function playWithFallback(text: string): void {
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
   }
 
-  let sourceIndex = 0;
+  let played = false;
 
-  function tryNext(): void {
-    if (sourceIndex >= TTS_SOURCES.length) return;
+  TTS_SOURCES.forEach((getUrl) => {
+    if (played) return;
 
-    const url = TTS_SOURCES[sourceIndex](text);
+    const url = getUrl(text);
     const audio = new Audio(url);
-    currentAudio = audio;
 
-    audio.onerror = () => {
-      sourceIndex++;
-      tryNext();
+    audio.oncanplaythrough = () => {
+      if (played) return;
+      played = true;
+      currentAudio = audio;
+      audio.play().catch(() => {});
     };
 
-    audio.play().catch(() => {
-      sourceIndex++;
-      tryNext();
-    });
-  }
-
-  tryNext();
+    audio.onerror = () => {};
+    audio.load();
+  });
 }
 
 // 播放英语单词发音
@@ -106,6 +103,34 @@ export function speakSentence(sentence: string): void {
     window.speechSynthesis.speak(utterance);
   } else {
     // 长句子截断避免某些TTS服务失败
+    const shortText = sentence.length > 100 ? sentence.substring(0, 100) : sentence;
+    playWithFallback(shortText);
+  }
+}
+
+// 播放例句发音（快速版）
+export function speakSentenceFast(sentence: string): void {
+  if (isSpeechSupported()) {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    utterance.lang = "en-US";
+    utterance.rate = 1.1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice =
+      voices.find((v) => v.lang.startsWith("en") && v.name.includes("English")) ||
+      voices.find((v) => v.lang.startsWith("en") && v.name.includes("US")) ||
+      voices.find((v) => v.lang.startsWith("en")) ||
+      null;
+    if (englishVoice) utterance.voice = englishVoice;
+
+    window.speechSynthesis.speak(utterance);
+  } else {
     const shortText = sentence.length > 100 ? sentence.substring(0, 100) : sentence;
     playWithFallback(shortText);
   }

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useStudyStore } from "@/lib/store";
-import { speakWord, speakSentence, stopSpeaking, isSpeechSupported } from "@/lib/speech";
+import { speakWord, speakSentenceFast, stopSpeaking, isSpeechSupported } from "@/lib/speech";
 import { translateToChinese } from "@/lib/translate";
 import wordsData from "@/data/toefl_words.json";
 
@@ -439,39 +439,40 @@ export default function LearnPage() {
               <p style={{ fontSize: 22, color: '#334155', lineHeight: 1.6, marginBottom: 16 }}>{currentWord.meaning}</p>
               {currentWord.example && (
                 <div style={{ marginTop: 12, background: '#f8fafc', borderRadius: 12, padding: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                     <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          speakSentence(currentWord.example);
+                          speakSentenceFast(currentWord.example);
                         }}
                         style={{
-                          background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                          border: 'none',
-                          borderRadius: 10,
+                          background: 'none',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 8,
                           cursor: 'pointer',
-                          padding: '8px 12px',
-                          color: 'white',
+                          padding: '4px 8px',
+                          color: '#94a3b8',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 4,
+                          gap: 3,
                           flexShrink: 0,
-                          fontSize: 12,
-                          fontWeight: 600,
+                          fontSize: 11,
                         }}
                         title="播放例句发音"
                       >
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
                         </svg>
                         朗读
                       </button>
                     <p style={{ fontSize: 14, color: '#334155', fontStyle: 'italic', lineHeight: 1.5 }}>{currentWord.example}</p>
                   </div>
-                  {exampleTranslation && (
-                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 8, paddingLeft: 4 }}>
+                  {exampleTranslation ? (
+                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>
                       {exampleTranslation}
                     </p>
+                  ) : (
+                    <p style={{ fontSize: 12, color: '#cbd5e1', marginTop: 8 }}>翻译加载中...</p>
                   )}
                 </div>
               )}
