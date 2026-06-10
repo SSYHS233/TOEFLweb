@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useStudyStore } from "@/lib/store";
 import { speakWord, speakSentence, stopSpeaking, isSpeechSupported } from "@/lib/speech";
+import { translateToChinese } from "@/lib/translate";
 import wordsData from "@/data/toefl_words.json";
 
 interface Word {
@@ -50,10 +51,23 @@ export default function LearnPage() {
   const [groupsCompleted, setGroupsCompleted] = useState(0);
   const [startTime] = useState(Date.now());
 
+  // 例句翻译
+  const [exampleTranslation, setExampleTranslation] = useState("");
+
   useEffect(() => {
     const listWords = (wordsData as Word[]).filter(w => w.listNumber === listId);
     setWords(listWords);
   }, [listId]);
+
+  // 当单词变化时，翻译例句
+  useEffect(() => {
+    if (currentWord?.example) {
+      setExampleTranslation("");
+      translateToChinese(currentWord.example).then(setExampleTranslation);
+    } else {
+      setExampleTranslation("");
+    }
+  }, [currentWord?.word]);
 
   // 计算当前组的单词
   const currentGroupStart = groupIndex * GROUP_SIZE;
@@ -412,33 +426,40 @@ export default function LearnPage() {
               {currentWord.phonetic && <p style={{ fontSize: 18, color: '#94a3b8', marginBottom: 12 }}>{currentWord.phonetic}</p>}
               <p style={{ fontSize: 22, color: '#334155', lineHeight: 1.6, marginBottom: 16 }}>{currentWord.meaning}</p>
               {currentWord.example && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <p style={{ fontSize: 14, color: '#94a3b8', fontStyle: 'italic' }}>{currentWord.example}</p>
-                  <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        speakSentence(currentWord.example);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 4,
-                        color: '#94a3b8',
-                        transition: 'color 0.2s',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.color = '#8b5cf6';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.color = '#94a3b8';
-                      }}
-                      title="播放例句发音"
-                    >
-                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                      </svg>
-                    </button>
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <p style={{ fontSize: 14, color: '#94a3b8', fontStyle: 'italic' }}>{currentWord.example}</p>
+                    <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          speakSentence(currentWord.example);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 4,
+                          color: '#94a3b8',
+                          transition: 'color 0.2s',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.color = '#8b5cf6';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.color = '#94a3b8';
+                        }}
+                        title="播放例句发音"
+                      >
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                        </svg>
+                      </button>
+                  </div>
+                  {exampleTranslation && (
+                    <p style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 4 }}>
+                      {exampleTranslation}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
