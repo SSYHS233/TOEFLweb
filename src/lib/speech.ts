@@ -105,7 +105,9 @@ export function speakSentence(sentence: string): void {
 
     window.speechSynthesis.speak(utterance);
   } else {
-    playWithFallback(sentence);
+    // 长句子截断避免某些TTS服务失败
+    const shortText = sentence.length > 100 ? sentence.substring(0, 100) : sentence;
+    playWithFallback(shortText);
   }
 }
 
