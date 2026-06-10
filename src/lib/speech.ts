@@ -13,20 +13,44 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 // 当前播放的音频（用于停止）
 let currentAudio: HTMLAudioElement | null = null;
 
-// 使用 Google Translate TTS 作为兜底
-function playWithGoogleTTS(text: string, lang = "en"): void {
-  // 停止之前的播放
+// 多个 TTS 源，按优先级尝试
+const TTS_SOURCES = [
+  // 有道词典（国内可用，速度快）
+  (text: string) => `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`,
+  // 百度翻译（国内可用）
+  (text: string) => `https://fanyi.baidu.com/gettts?lan=en&text=${encodeURIComponent(text)}&spd=3`,
+  // Google Translate（国外可用）
+  (text: string) => `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`,
+];
+
+// 使用 TTS 兜底（多个源自动切换）
+function playWithFallback(text: string): void {
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
   }
 
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(text)}`;
-  const audio = new Audio(url);
-  currentAudio = audio;
-  audio.play().catch(() => {
-    // 静默失败，某些浏览器可能阻止自动播放
-  });
+  let sourceIndex = 0;
+
+  function tryNext(): void {
+    if (sourceIndex >= TTS_SOURCES.length) return;
+
+    const url = TTS_SOURCES[sourceIndex](text);
+    const audio = new Audio(url);
+    currentAudio = audio;
+
+    audio.onerror = () => {
+      sourceIndex++;
+      tryNext();
+    };
+
+    audio.play().catch(() => {
+      sourceIndex++;
+      tryNext();
+    });
+  }
+
+  tryNext();
 }
 
 // 播放英语单词发音
@@ -53,8 +77,8 @@ export function speakWord(word: string): void {
 
     window.speechSynthesis.speak(utterance);
   } else {
-    // 兜底：使用 Google Translate TTS
-    playWithGoogleTTS(word, "en");
+    // 兜底：使用有道/百度/Google TTS
+    playWithFallback(word);
   }
 }
 
@@ -81,7 +105,7 @@ export function speakSentence(sentence: string): void {
 
     window.speechSynthesis.speak(utterance);
   } else {
-    playWithGoogleTTS(sentence, "en");
+    playWithFallback(sentence);
   }
 }
 
