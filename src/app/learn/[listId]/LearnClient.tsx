@@ -28,7 +28,7 @@ export default function LearnPage() {
   const params = useParams();
   const listId = parseInt(params.listId as string);
 
-  const { updateWordProgress, updateListProgress, updateUserStats, userStats } = useStudyStore();
+  const { updateWordProgress, updateListProgress, updateUserStats, userStats, wordNotes, setWordNote } = useStudyStore();
 
   const [words, setWords] = useState<Word[]>([]);
   const [phase, setPhase] = useState<Phase>("learn");
@@ -54,10 +54,21 @@ export default function LearnPage() {
   // 例句翻译
   const [exampleTranslation, setExampleTranslation] = useState("");
 
+  // 笔记
+  const [noteText, setNoteText] = useState("");
+  const [showNoteInput, setShowNoteInput] = useState(false);
+
   useEffect(() => {
     const listWords = (wordsData as Word[]).filter(w => w.listNumber === listId);
     setWords(listWords);
   }, [listId]);
+
+  // 计算当前组的单词
+  const currentGroupStart = groupIndex * GROUP_SIZE;
+  const currentGroupEnd = Math.min(currentGroupStart + GROUP_SIZE, words.length);
+  const currentGroupWords = words.slice(currentGroupStart, currentGroupEnd);
+  const currentWord = currentGroupWords[currentIndex];
+  const totalGroups = Math.ceil(words.length / GROUP_SIZE);
 
   // 当单词变化时，翻译例句
   useEffect(() => {
@@ -69,12 +80,13 @@ export default function LearnPage() {
     }
   }, [currentWord?.word]);
 
-  // 计算当前组的单词
-  const currentGroupStart = groupIndex * GROUP_SIZE;
-  const currentGroupEnd = Math.min(currentGroupStart + GROUP_SIZE, words.length);
-  const currentGroupWords = words.slice(currentGroupStart, currentGroupEnd);
-  const currentWord = currentGroupWords[currentIndex];
-  const totalGroups = Math.ceil(words.length / GROUP_SIZE);
+  // 当单词变化时，加载笔记
+  useEffect(() => {
+    if (currentWord?.word) {
+      setNoteText(wordNotes[currentWord.word.toLowerCase()] || "");
+      setShowNoteInput(false);
+    }
+  }, [currentWord?.word, wordNotes]);
 
   // 倒计时
   useEffect(() => {
@@ -462,6 +474,85 @@ export default function LearnPage() {
                   )}
                 </div>
               )}
+
+              {/* 笔记区域 */}
+              <div style={{ marginTop: 16, textAlign: 'center' }}>
+                {noteText && !showNoteInput ? (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNoteInput(true);
+                    }}
+                    style={{
+                      background: '#fefce8',
+                      border: '1px solid #fde68a',
+                      borderRadius: 12,
+                      padding: '10px 14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <p style={{ fontSize: 13, color: '#92400e', textAlign: 'left' }}>
+                      📝 {noteText}
+                    </p>
+                  </div>
+                ) : showNoteInput ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="添加笔记..."
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        border: '2px solid #e2e8f0',
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => {
+                        if (currentWord?.word) {
+                          setWordNote(currentWord.word, noteText);
+                          setShowNoteInput(false);
+                        }
+                      }}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: 12,
+                        background: '#0ea5e9',
+                        color: 'white',
+                        border: 'none',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      保存
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNoteInput(true);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: 12,
+                      padding: '8px 16px',
+                      cursor: 'pointer',
+                      color: '#94a3b8',
+                      fontSize: 13,
+                    }}
+                  >
+                    + 添加笔记
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

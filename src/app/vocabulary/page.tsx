@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import wordsData from "@/data/toefl_words.json";
 import { speakWord, isSpeechSupported } from "@/lib/speech";
+import { useStudyStore } from "@/lib/store";
 
 interface Word {
   word: string;
@@ -16,6 +17,7 @@ interface Word {
 }
 
 export default function VocabularyPage() {
+  const { wordNotes } = useStudyStore();
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedList, setSelectedList] = useState<number | null>(null);
@@ -189,6 +191,13 @@ export default function VocabularyPage() {
                     <p style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
                       <span style={{ fontWeight: 600 }}>助记：</span>{word.mnemonic}
                     </p>
+                  )}
+                  {wordNotes[word.word.toLowerCase()] && (
+                    <div style={{ background: '#fefce8', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                      <p style={{ fontSize: 13, color: '#92400e' }}>
+                        📝 {wordNotes[word.word.toLowerCase()]}
+                      </p>
+                    </div>
                   )}
                   {word.example && (
                     <div style={{ background: '#f8fafc', borderRadius: 12, padding: 12 }}>

@@ -277,7 +277,12 @@ export default function HomePage() {
         </div>
 
         {/* 快捷入口 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          <Link href="/lists?mode=review" style={quickLinkStyle}>
+            <div style={{ ...quickIconStyle, background: '#fff7ed' }}>🔄</div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>复习单词</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>选择 List 复习</span>
+          </Link>
           <Link href="/vocabulary" style={quickLinkStyle}>
             <div style={{ ...quickIconStyle, background: '#fef3c7' }}>📖</div>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>全部词汇</span>

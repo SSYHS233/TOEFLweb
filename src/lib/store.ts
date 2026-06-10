@@ -35,6 +35,10 @@ interface StudyStore {
   wordProgress: Record<string, WordProgress>;
   updateWordProgress: (wordId: string, data: Partial<WordProgress>) => void;
 
+  // 单词笔记
+  wordNotes: Record<string, string>;
+  setWordNote: (word: string, note: string) => void;
+
   // List进度
   listProgress: Record<number, ListProgress>;
   updateListProgress: (listId: number, data: Partial<ListProgress>) => void;
@@ -71,6 +75,15 @@ export const useStudyStore = create<StudyStore>()(
               ...state.wordProgress[wordId],
               ...data,
             },
+          },
+        })),
+
+      wordNotes: {},
+      setWordNote: (word, note) =>
+        set((state) => ({
+          wordNotes: {
+            ...state.wordNotes,
+            [word.toLowerCase()]: note,
           },
         })),
 
@@ -134,6 +147,7 @@ export const useStudyStore = create<StudyStore>()(
         set({
           startDate: null,
           wordProgress: {},
+          wordNotes: {},
           listProgress: {},
           userStats: {
             streakDays: 0,
