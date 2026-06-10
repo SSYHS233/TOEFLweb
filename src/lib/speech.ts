@@ -5,33 +5,34 @@ export function isSpeechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-// 缓存英语语音
-let cachedVoice: SpeechSynthesisVoice | null = null;
+// iOS Safari 需要在用户手势中"解锁"语音合成
+let unlocked = false;
 
-// 获取英语语音（同步，使用缓存）
+function unlockSpeech(): void {
+  if (unlocked || !isSpeechSupported()) return;
+  // 播放一个空的静默 utterance 来解锁
+  const u = new SpeechSynthesisUtterance("");
+  u.volume = 0;
+  window.speechSynthesis.speak(u);
+  unlocked = true;
+}
+
+// 获取英语语音
 function getEnglishVoice(): SpeechSynthesisVoice | null {
-  if (cachedVoice) return cachedVoice;
   const voices = window.speechSynthesis.getVoices();
-  cachedVoice =
+  return (
     voices.find((v) => v.lang.startsWith("en") && v.name.includes("English")) ||
     voices.find((v) => v.lang.startsWith("en") && v.name.includes("US")) ||
     voices.find((v) => v.lang.startsWith("en")) ||
-    null;
-  return cachedVoice;
+    null
+  );
 }
 
-// 页面加载时预加载语音列表（移动端需要）
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => {
-    cachedVoice = null; // 重新加载时清除缓存
-  };
-}
-
-// 播放英语单词发音（必须同步调用，移动端要求在用户手势内直接调用 speak）
+// 播放英语单词发音
 export function speakWord(word: string): void {
   if (!isSpeechSupported()) return;
 
+  unlockSpeech();
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(word);
@@ -50,6 +51,7 @@ export function speakWord(word: string): void {
 export function speakSentence(sentence: string): void {
   if (!isSpeechSupported()) return;
 
+  unlockSpeech();
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(sentence);
