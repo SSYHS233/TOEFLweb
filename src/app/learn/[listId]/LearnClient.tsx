@@ -377,10 +377,6 @@ export default function LearnPage() {
           <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (!isSpeechSupported()) {
-                  alert("当前浏览器不支持语音播放，请使用 Chrome 或 Safari 浏览器");
-                  return;
-                }
                 speakWord(currentWord.word);
               }}
               style={{
@@ -421,10 +417,6 @@ export default function LearnPage() {
                   <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isSpeechSupported()) {
-                          alert("当前浏览器不支持语音播放，请使用 Chrome 或 Safari 浏览器");
-                          return;
-                        }
                         speakSentence(currentWord.example);
                       }}
                       style={{
