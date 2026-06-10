@@ -2,28 +2,44 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TOTAL_LISTS, STUDY_START_DATE } from "@/types";
-import { differenceInDays } from "date-fns";
+import { useStudyStore } from "@/lib/store";
+import { TOTAL_LISTS } from "@/types";
+import { differenceInDays, format } from "date-fns";
 
 type ListStatus = "pending" | "learning" | "completed";
 
 export default function ListsPage() {
+  const { startDate, listProgress } = useStudyStore();
   const [mounted, setMounted] = useState(false);
   const [lists, setLists] = useState<{ num: number; status: ListStatus }[]>([]);
 
+  // 如果没有设置开始日期，默认使用今天
+  const effectiveStartDate = startDate || format(new Date(), "yyyy-MM-dd");
+
   useEffect(() => {
     setMounted(true);
-    const daysSinceStart = differenceInDays(new Date(), STUDY_START_DATE);
+
+    const studyStartDate = new Date(effectiveStartDate);
+    const daysSinceStart = differenceInDays(new Date(), studyStartDate);
     const isStarted = daysSinceStart >= 0;
     const day = isStarted ? daysSinceStart + 1 : 0;
     const learnedLists = isStarted ? (day - 1) * 2 : 0;
 
     setLists(Array.from({ length: TOTAL_LISTS }).map((_, i) => {
       const num = i + 1;
+      // 优先使用 store 中的实际进度
+      const progress = listProgress[num];
+      if (progress?.status === "completed") {
+        return { num, status: "completed" as ListStatus };
+      }
+      if (progress?.status === "learning") {
+        return { num, status: "learning" as ListStatus };
+      }
+      // 否则根据日期计算
       const status: ListStatus = num <= learnedLists ? "completed" : num <= learnedLists + 2 && isStarted ? "learning" : "pending";
       return { num, status };
     }));
-  }, []);
+  }, [effectiveStartDate, listProgress]);
 
   if (!mounted) return <Loading />;
 

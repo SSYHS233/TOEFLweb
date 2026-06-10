@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useStudyStore } from "@/lib/store";
 import {
   getDayTask,
   getDaysUntilEnd,
   getStudyPhase,
-  STUDY_START_DATE,
-  STUDY_END_DATE,
+  calculateEndDate,
   TOTAL_LISTS,
 } from "@/types";
 import { format, differenceInDays } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { startDate, listProgress } = useStudyStore();
   const [mounted, setMounted] = useState(false);
   const [todayTasks, setTodayTasks] = useState({
     newLists: [] as number[],
@@ -22,20 +25,32 @@ export default function HomePage() {
     estimatedMinutes: 0,
   });
 
+  // 如果没有设置开始日期，默认使用今天
+  const effectiveStartDate = startDate || format(new Date(), "yyyy-MM-dd");
+
+  // 检查是否有任何List已经开始学习（不是pending状态）
+  const hasStartedLearning = Object.values(listProgress).some(
+    (lp) => lp.status !== "pending"
+  );
+
   useEffect(() => {
     setMounted(true);
-    setTodayTasks(getDayTask(new Date()));
-  }, []);
+    const start = new Date(effectiveStartDate);
+    setTodayTasks(getDayTask(new Date(), start));
+  }, [effectiveStartDate]);
 
   if (!mounted) return <Loading />;
 
   const today = new Date();
-  const daysSinceStart = differenceInDays(today, STUDY_START_DATE);
-  const isStarted = daysSinceStart >= 0;
+  const studyStartDate = new Date(effectiveStartDate);
+  const studyEndDate = calculateEndDate(studyStartDate);
+  const daysSinceStart = differenceInDays(today, studyStartDate);
+  // 只有真正开始学习了才算天数
+  const isStarted = daysSinceStart >= 0 && hasStartedLearning;
   const currentDay = isStarted ? daysSinceStart + 1 : 0;
   const daysUntilStart = isStarted ? 0 : Math.abs(daysSinceStart);
-  const daysLeft = getDaysUntilEnd(today);
-  const progressPercent = isStarted ? Math.min(100, Math.round((currentDay / TOTAL_LISTS) * 100)) : 0;
+  const daysLeft = getDaysUntilEnd(today, studyEndDate);
+  const progressPercent = isStarted ? Math.min(100, Math.round((currentDay / 54) * 100)) : 0;
 
   // 计算今天要学的List（如果还没到开始日期，默认显示 L1, L2）
   const todayNewLists = todayTasks.newLists.length > 0 ? todayTasks.newLists : isStarted ? [] : [1, 2];
@@ -62,11 +77,21 @@ export default function HomePage() {
               {format(today, "MM月dd日 EEEE", { locale: zhCN })}
             </p>
           </div>
-          <Link href="/stats" style={iconBtnStyle}>
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-            </svg>
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/settings" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 12,
+              background: '#f1f5f9', textDecoration: 'none',
+              transition: 'all 0.2s',
+            }}>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                {startDate ? '调整计划' : '设置计划'}
+              </span>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -84,7 +109,7 @@ export default function HomePage() {
               </div>
               <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 16 }}>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>计划周期</p>
-                <p style={{ fontSize: 16, fontWeight: 600 }}>{format(STUDY_START_DATE, "MM月dd日")} — {format(STUDY_END_DATE, "MM月dd日")}</p>
+                <p style={{ fontSize: 16, fontWeight: 600 }}>{format(studyStartDate, "MM月dd日")} — {format(studyEndDate, "MM月dd日")}</p>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>共 {TOTAL_LISTS} 个 List · 每天新学 2 个</p>
               </div>
             </div>
@@ -252,16 +277,21 @@ export default function HomePage() {
         </div>
 
         {/* 快捷入口 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <Link href="/vocabulary" style={quickLinkStyle}>
+            <div style={{ ...quickIconStyle, background: '#fef3c7' }}>📖</div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>全部词汇</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>浏览词书</span>
+          </Link>
           <Link href="/schedule" style={quickLinkStyle}>
             <div style={{ ...quickIconStyle, background: '#eff6ff' }}>📅</div>
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>学习计划</span>
-            <span style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>艾宾浩斯安排</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>学习计划</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>艾宾浩斯</span>
           </Link>
           <Link href="/lists" style={quickLinkStyle}>
             <div style={{ ...quickIconStyle, background: '#faf5ff' }}>📚</div>
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>全部 List</span>
-            <span style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{TOTAL_LISTS} 个词表</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>全部 List</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{TOTAL_LISTS} 个词表</span>
           </Link>
         </div>
 

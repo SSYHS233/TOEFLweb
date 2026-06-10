@@ -2,26 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format, addDays, differenceInDays } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { STUDY_START_DATE, STUDY_END_DATE, getDayTask, TOTAL_LISTS } from "@/types";
+import { useStudyStore } from "@/lib/store";
+import { calculateEndDate, getDayTask, TOTAL_LISTS } from "@/types";
 
 export default function SchedulePage() {
+  const router = useRouter();
+  const { startDate } = useStudyStore();
   const [mounted, setMounted] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  useEffect(() => { setMounted(true); }, []);
+  // 如果没有设置开始日期，默认使用今天
+  const effectiveStartDate = startDate || format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) return <Loading />;
 
-  const totalDays = differenceInDays(STUDY_END_DATE, STUDY_START_DATE) + 1;
+  const studyStartDate = new Date(effectiveStartDate);
+  const studyEndDate = calculateEndDate(studyStartDate);
+  const totalDays = differenceInDays(studyEndDate, studyStartDate) + 1;
   const today = new Date();
   const allDates = Array.from({ length: totalDays }).map((_, i) => {
-    const date = addDays(STUDY_START_DATE, i);
-    return { date, day: i + 1, task: getDayTask(date) };
+    const date = addDays(studyStartDate, i);
+    return { date, day: i + 1, task: getDayTask(date, studyStartDate) };
   });
-  const selectedTask = getDayTask(selectedDate);
+  const selectedTask = getDayTask(selectedDate, studyStartDate);
 
   return (
     <div style={pageStyle}>

@@ -2,33 +2,36 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { differenceInDays } from "date-fns";
-import { STUDY_START_DATE, TOTAL_LISTS } from "@/types";
+import { useStudyStore } from "@/lib/store";
+import { TOTAL_LISTS, calculateEndDate } from "@/types";
+import wordsData from "@/data/toefl_words.json";
+import { format, differenceInDays } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 export default function StatsPage() {
   const [mounted, setMounted] = useState(false);
-  const [stats, setStats] = useState({
-    totalWords: 4320, learnedWords: 0, masteredWords: 0,
-    reviewWords: 0, todayLearned: 0, todayReviewed: 0,
-    streakDays: 0, totalMinutes: 0,
-  });
+  const { userStats, wordProgress, listProgress, startDate } = useStudyStore();
 
   useEffect(() => {
     setMounted(true);
-    const daysSinceStart = differenceInDays(new Date(), STUDY_START_DATE);
-    const isStarted = daysSinceStart >= 0;
-    const day = isStarted ? daysSinceStart + 1 : 0;
-    setStats({
-      totalWords: 4320,
-      learnedWords: isStarted ? Math.min(day * 180, 4320) : 0,
-      masteredWords: isStarted ? Math.floor(day * 120) : 0,
-      reviewWords: isStarted ? Math.floor(day * 60) : 0,
-      todayLearned: isStarted ? 180 : 0,
-      todayReviewed: isStarted ? 120 : 0,
-      streakDays: isStarted ? day : 0,
-      totalMinutes: isStarted ? day * 45 : 0,
-    });
   }, []);
+
+  // 计算实际学习数据
+  const totalWords = (wordsData as any[]).length;
+  const learnedWords = Object.keys(wordProgress).length;
+  const masteredWords = Object.values(wordProgress).filter((w: any) => w.familiarity === 2).length;
+  const completedLists = Object.values(listProgress).filter((l: any) => l.status === "completed").length;
+
+  const stats = {
+    totalWords,
+    learnedWords,
+    masteredWords,
+    reviewWords: learnedWords - masteredWords,
+    todayLearned: userStats.todayLearned || 0,
+    todayReviewed: userStats.todayReviewed || 0,
+    streakDays: userStats.streakDays || 0,
+    totalMinutes: userStats.totalMinutes || 0,
+  };
 
   if (!mounted) return <Loading />;
 
@@ -52,6 +55,33 @@ export default function StatsPage() {
       </header>
 
       <main style={mainStyle}>
+        {/* 计划信息 */}
+        {startDate && (
+          <div style={cardStyle}>
+            <h2 style={sectionTitleStyle}>📅 学习计划</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f0fdf4', borderRadius: '12px' }}>
+                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>开始日期</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#16a34a' }}>
+                  {format(new Date(startDate), "MM月dd日", { locale: zhCN })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#eff6ff', borderRadius: '12px' }}>
+                <span style={{ fontSize: 14, color: '#2563eb', fontWeight: 500 }}>结束日期</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#2563eb' }}>
+                  {format(calculateEndDate(new Date(startDate)), "MM月dd日", { locale: zhCN })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fefce8', borderRadius: '12px' }}>
+                <span style={{ fontSize: 14, color: '#ca8a04', fontWeight: 500 }}>当前进度</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#ca8a04' }}>
+                  第 {Math.max(1, differenceInDays(new Date(), new Date(startDate)) + 1)} 天 / 54 天
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 今日进度 */}
         <div style={{
           background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 50%, #4f46e5 100%)',
@@ -131,16 +161,22 @@ export default function StatsPage() {
           <h2 style={sectionTitleStyle}>List 进度</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {Array.from({ length: Math.min(10, TOTAL_LISTS) }).map((_, i) => {
-              const isDone = stats.learnedWords > 0 && i < stats.learnedWords / 90;
-              const isCurrent = stats.learnedWords > 0 && i === Math.floor(stats.learnedWords / 90);
+              const listId = i + 1;
+              const progress = listProgress[listId];
+              const isDone = progress?.status === "completed";
+              const isCurrent = progress?.status === "learning";
+              const wordsInList = (wordsData as any[]).filter((w: any) => w.listNumber === listId).length;
+              const learnedInList = Object.values(wordProgress).filter((w: any) => w.wordId.startsWith(`${listId}-`)).length;
+              const progressPercent = wordsInList > 0 ? (learnedInList / wordsInList) * 100 : 0;
+
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8', width: 28, textAlign: 'right' }}>L{i + 1}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', width: 28, textAlign: 'right' }}>L{listId}</span>
                   <div style={progressBg}>
                     <div style={{
                       ...progressFill,
                       background: isDone ? 'linear-gradient(90deg, #4ade80, #16a34a)' : isCurrent ? 'linear-gradient(90deg, #38bdf8, #2563eb)' : '#e2e8f0',
-                      width: isDone ? '100%' : isCurrent ? '50%' : '0%',
+                      width: isDone ? '100%' : `${progressPercent}%`,
                     }} />
                   </div>
                 </div>
@@ -148,7 +184,7 @@ export default function StatsPage() {
             })}
           </div>
           <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', marginTop: 16 }}>
-            {stats.learnedWords > 0 ? `已完成 ${Math.floor(stats.learnedWords / 90)} / ${TOTAL_LISTS} 个 List` : '学习尚未开始'}
+            {completedLists > 0 ? `已完成 ${completedLists} / ${TOTAL_LISTS} 个 List` : '学习尚未开始'}
           </p>
         </div>
       </main>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useStudyStore } from "@/lib/store";
+import { speakWord, speakSentence, stopSpeaking, isSpeechSupported } from "@/lib/speech";
 import wordsData from "@/data/toefl_words.json";
 
 interface Word {
@@ -86,6 +87,13 @@ export default function LearnPage() {
   const startTimer = () => {
     setTimeLeft(TIMER_MINUTES * 60);
     setIsTimerRunning(true);
+    // 标记List为学习中
+    updateListProgress(listId, {
+      listId,
+      status: "learning",
+      wordsLearned: 0,
+      wordsMastered: 0,
+    });
   };
 
   // 一组学完
@@ -113,8 +121,13 @@ export default function LearnPage() {
       reviewCount: 1,
     });
 
-    updateUserStats({
-      todayLearned: (userStats.todayLearned || 0) + 1,
+    // 使用函数式更新确保获取最新值
+    const currentStats = useStudyStore.getState().userStats;
+    useStudyStore.getState().updateUserStats({
+      todayLearned: (currentStats.todayLearned || 0) + 1,
+      lastStudyDate: new Date().toDateString(),
+      // 如果是第一次学习，设置 streakDays 为 1
+      streakDays: currentStats.lastStudyDate ? currentStats.streakDays : 1,
     });
 
     if (currentIndex < currentGroupWords.length - 1) {
@@ -126,7 +139,7 @@ export default function LearnPage() {
       // 当前组完成
       handleGroupComplete();
     }
-  }, [currentIndex, currentWord, currentGroupWords.length, listId, currentGroupStart, updateWordProgress, updateUserStats, userStats, handleGroupComplete]);
+  }, [currentIndex, currentWord, currentGroupWords.length, listId, currentGroupStart, updateWordProgress, handleGroupComplete]);
 
   // 快速复习完成
   const handleQuickReviewComplete = useCallback(() => {
@@ -360,11 +373,78 @@ export default function LearnPage() {
             {currentWord.word}
           </h1>
 
+          {/* 语音播放按钮 */}
+          {isSpeechSupported() && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                speakWord(currentWord.word);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: 48,
+                height: 48,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                margin: '0 auto 16px',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                transition: 'transform 0.2s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'scale(1.1)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title="播放发音"
+            >
+              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
+            </button>
+          )}
+
           {showAnswer && (
             <div>
               {currentWord.phonetic && <p style={{ fontSize: 18, color: '#94a3b8', marginBottom: 12 }}>{currentWord.phonetic}</p>}
               <p style={{ fontSize: 22, color: '#334155', lineHeight: 1.6, marginBottom: 16 }}>{currentWord.meaning}</p>
-              {currentWord.example && <p style={{ fontSize: 14, color: '#94a3b8', fontStyle: 'italic' }}>{currentWord.example}</p>}
+              {currentWord.example && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <p style={{ fontSize: 14, color: '#94a3b8', fontStyle: 'italic' }}>{currentWord.example}</p>
+                  {isSpeechSupported() && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        speakSentence(currentWord.example);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 4,
+                        color: '#94a3b8',
+                        transition: 'color 0.2s',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.color = '#8b5cf6';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.color = '#94a3b8';
+                      }}
+                      title="播放例句发音"
+                    >
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

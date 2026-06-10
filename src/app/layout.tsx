@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ClientProvider from "@/components/ClientProvider";
 
 export const metadata: Metadata = {
   title: "TOEFL 词汇学习",
@@ -36,7 +37,9 @@ export default function RootLayout({
         <meta httpEquiv="Expires" content="0" />
       </head>
       <body className="antialiased">
-        {children}
+        <ClientProvider>
+          {children}
+        </ClientProvider>
       </body>
     </html>
   );

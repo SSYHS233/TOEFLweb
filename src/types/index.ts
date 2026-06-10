@@ -22,14 +22,22 @@ export const WORDS_PER_GROUP = 10;
 // 每个List预估单词数
 export const ESTIMATED_WORDS_PER_LIST = 90;
 
-// 学习计划开始日期
-export const STUDY_START_DATE = new Date("2026-06-14");
-
-// 计划结束日期
-export const STUDY_END_DATE = new Date("2026-08-05");
-
 // 总List数
 export const TOTAL_LISTS = 48;
+
+// 计算结束日期（从开始日期起，每天2个List，共48个List需要24天新学+30天复习=54天）
+export function calculateEndDate(startDate: Date): Date {
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 53); // 54天后结束
+  return endDate;
+}
+
+// 默认开始日期（今天）
+export function getDefaultStartDate(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
 
 // 今天要学的新List
 export function getTodayNewLists(dayNumber: number): number[] {
@@ -49,8 +57,6 @@ export function getTodayNewLists(dayNumber: number): number[] {
 // 根据艾宾浩斯规律计算某天应该复习的List
 export function getListsForReview(dayNumber: number): number[] {
   const reviewLists: number[] = [];
-  const targetDate = new Date(STUDY_START_DATE);
-  targetDate.setDate(targetDate.getDate() + dayNumber - 1);
 
   // 对于每个已经学过的List，检查是否需要复习
   for (let listNum = 1; listNum <= 48; listNum++) {
@@ -77,14 +83,14 @@ export function getListsForReview(dayNumber: number): number[] {
 }
 
 // 获取某个日期应该学习的List
-export function getDayTask(date: Date): {
+export function getDayTask(date: Date, startDate: Date): {
   newLists: number[];
   reviewLists: number[];
   totalWords: number;
   estimatedMinutes: number;
 } {
   const daysSinceStart = Math.floor(
-    (date.getTime() - STUDY_START_DATE.getTime()) / (1000 * 60 * 60 * 24)
+    (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   ) + 1;
 
   if (daysSinceStart < 1) {
@@ -126,11 +132,11 @@ export function getStudyPhase(dayNumber: number): {
 }
 
 // 计算距离计划结束的天数
-export function getDaysUntilEnd(date: Date): number {
+export function getDaysUntilEnd(date: Date, endDate: Date): number {
   return Math.max(
     0,
     Math.ceil(
-      (STUDY_END_DATE.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+      (endDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
     )
   );
 }
