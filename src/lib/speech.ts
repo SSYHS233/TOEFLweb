@@ -5,34 +5,15 @@ export function isSpeechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-// iOS Safari 需要在用户手势中"解锁"语音合成
-let unlocked = false;
-
-function unlockSpeech(): void {
-  if (unlocked || !isSpeechSupported()) return;
-  // 播放一个空的静默 utterance 来解锁
-  const u = new SpeechSynthesisUtterance("");
-  u.volume = 0;
-  window.speechSynthesis.speak(u);
-  unlocked = true;
-}
-
-// 获取英语语音
-function getEnglishVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang.startsWith("en") && v.name.includes("English")) ||
-    voices.find((v) => v.lang.startsWith("en") && v.name.includes("US")) ||
-    voices.find((v) => v.lang.startsWith("en")) ||
-    null
-  );
+// 页面加载时预加载语音列表（安卓需要）
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.getVoices();
 }
 
 // 播放英语单词发音
 export function speakWord(word: string): void {
   if (!isSpeechSupported()) return;
 
-  unlockSpeech();
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(word);
@@ -41,8 +22,14 @@ export function speakWord(word: string): void {
   utterance.pitch = 1;
   utterance.volume = 1;
 
-  const voice = getEnglishVoice();
-  if (voice) utterance.voice = voice;
+  // 尝试找到英语语音
+  const voices = window.speechSynthesis.getVoices();
+  const englishVoice =
+    voices.find((v) => v.lang.startsWith("en") && v.name.includes("English")) ||
+    voices.find((v) => v.lang.startsWith("en") && v.name.includes("US")) ||
+    voices.find((v) => v.lang.startsWith("en")) ||
+    null;
+  if (englishVoice) utterance.voice = englishVoice;
 
   window.speechSynthesis.speak(utterance);
 }
@@ -51,7 +38,6 @@ export function speakWord(word: string): void {
 export function speakSentence(sentence: string): void {
   if (!isSpeechSupported()) return;
 
-  unlockSpeech();
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(sentence);
@@ -60,8 +46,13 @@ export function speakSentence(sentence: string): void {
   utterance.pitch = 1;
   utterance.volume = 1;
 
-  const voice = getEnglishVoice();
-  if (voice) utterance.voice = voice;
+  const voices = window.speechSynthesis.getVoices();
+  const englishVoice =
+    voices.find((v) => v.lang.startsWith("en") && v.name.includes("English")) ||
+    voices.find((v) => v.lang.startsWith("en") && v.name.includes("US")) ||
+    voices.find((v) => v.lang.startsWith("en")) ||
+    null;
+  if (englishVoice) utterance.voice = englishVoice;
 
   window.speechSynthesis.speak(utterance);
 }
