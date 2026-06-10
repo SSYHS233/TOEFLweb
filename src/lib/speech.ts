@@ -14,7 +14,10 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 export function speakWord(word: string): void {
   if (!isSpeechSupported()) return;
 
-  window.speechSynthesis.cancel();
+  // 先取消之前的播放（如果有的话）
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
 
   const utterance = new SpeechSynthesisUtterance(word);
   utterance.lang = "en-US";
@@ -38,7 +41,10 @@ export function speakWord(word: string): void {
 export function speakSentence(sentence: string): void {
   if (!isSpeechSupported()) return;
 
-  window.speechSynthesis.cancel();
+  // 先取消之前的播放（如果有的话）
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
 
   const utterance = new SpeechSynthesisUtterance(sentence);
   utterance.lang = "en-US";
